@@ -1,4 +1,4 @@
-# NEXUS REPOSITORY 3 — TOP 10 SCENARIO-BASED INTERVIEW QUESTIONS & ANSWERS
+# NEXUS REPOSITORY 3 — TOP 20 SCENARIO-BASED INTERVIEW QUESTIONS & ANSWERS
 
 ## 1. DEVELOPERS CANNOT DOWNLOAD A DEPENDENCY FROM NEXUS
 
@@ -1293,79 +1293,3 @@ After recovery, verify:
 ### Interview answer:
 
 > "I would follow the documented disaster recovery procedure. I would first determine what data is intact and which backup is required. I would restore the infrastructure, Nexus configuration, and required artifact storage according to the supported recovery process. After startup, I would validate health, authentication, repositories, artifact download/upload, proxy connectivity, and CI/CD before declaring the service recovered."
-
----
-
-## IMPORTANT PRODUCTION TROUBLESHOOTING MINDSET
-
-When you get a production Nexus problem, DON'T immediately say:
-
-"Nexus is broken."
-
-Instead, think in layers:
-
-    CLIENT
-      |
-      v
-    NETWORK
-      |
-      v
-    LOAD BALANCER / PROXY
-      |
-      v
-    NEXUS APPLICATION
-      |
-      v
-    REPOSITORY
-      |
-      v
-    SECURITY
-      |
-      v
-    BLOB STORE / STORAGE
-      |
-      v
-    UPSTREAM REPOSITORY
-
-For every incident ask:
-
-1. What exactly is failing?
-2. Who is affected?
-3. When did it start?
-4. What changed recently?
-5. What HTTP error are we getting?
-6. Is Nexus reachable?
-7. Is authentication working?
-8. Is authorization working?
-9. Is the repository configured correctly?
-10. Is storage healthy?
-11. Is the upstream repository reachable?
-12. What do the Nexus logs say?
-
----
-
-## MOST IMPORTANT HTTP CODES
-
-    401 = Authentication failed
-
-    403 = Authentication succeeded but permission is denied
-
-    404 = Resource/artifact not found
-
-    408 = Request timeout
-
-    429 = Too many requests/rate limiting
-
-    500 = Nexus/server internal error
-
-    502 = Bad gateway / upstream communication problem
-
-    503 = Service unavailable
-
-    504 = Gateway timeout
-
----
-
-## BEST ONE-LINE INTERVIEW FORMULA
-
-> "First I would identify the scope and exact error, then check client configuration, network connectivity, authentication, authorization, repository configuration, storage/upstream connectivity, and finally Nexus logs. After fixing the issue, I would validate the complete workflow and monitor the system to make sure the problem does not recur."
