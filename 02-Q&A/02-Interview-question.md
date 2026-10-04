@@ -1,221 +1,1371 @@
-### Advanced Usage
+# NEXUS REPOSITORY 3 — TOP 10 SCENARIO-BASED INTERVIEW QUESTIONS & ANSWERS
 
-**51. How do you configure Nexus for high availability?**
+## 1. DEVELOPERS CANNOT DOWNLOAD A DEPENDENCY FROM NEXUS
 
-HA is a **Pro** feature. You run **multiple Nexus nodes** behind a **load balancer**, with a shared **external database (PostgreSQL)** and a **shared blob store** (such as S3). If one node fails, the others keep working.
+**Q: A developer runs "mvn clean install" but gets:**
 
-**52. What are the benefits of Nexus Pro?**
+    "Could not find artifact". How would you troubleshoot?
 
-High availability, staging and promotion features, replication, **SAML single sign-on**, security scanning with Nexus Firewall/IQ, and **professional support** from Sonatype.
+### Answer:
 
-**53. How do you manage npm packages?**
+I would troubleshoot it step by step instead of assuming Nexus is broken.
 
-Create an **npm hosted** repository (your own packages), an **npm proxy** (to npmjs.org), and an **npm group** combining them. Point npm to the group URL with `npm config set registry <url>`, and publish with `npm publish`.
+1. Check the dependency coordinates:
+   - Group ID
+   - Artifact ID
+   - Version
 
-**54. What is the purpose of the REST API?**
+2. Check Maven settings.xml:
+   - Is Maven pointing to the correct Nexus URL?
+   - Are the credentials correct?
+   - Is the correct repository configured?
 
-It lets scripts and tools **control Nexus automatically**: create repositories, upload and search components, manage users and roles, run tasks.
+3. Check Nexus:
+   - Does the artifact actually exist?
+   - Is it in a hosted, proxy, or group repository?
 
-**55. How do you use the Nexus CLI?**
+4. Check permissions:
+   - Does the user have Browse/Read access?
+   - Check User -> Role -> Privileges -> Repository.
 
-⚠️ **Update:** Nexus 3 has **no official CLI**. Some community tools exist, but the normal way is **`curl` with the REST API**, or build tools like Maven and npm. Say: "We automate with the REST API."
+5. If it is a proxy repository:
+   - Check the remote/upstream URL.
+   - Check whether Nexus can reach the upstream repository.
+   - Check proxy/cache status.
 
----
+6. Check Nexus logs and Maven logs.
 
-### Common Commands and Configurations
+### Common HTTP errors:
 
-**56. How do you configure Maven to use Nexus?**
+    401 = Authentication problem
+    403 = Permission problem
+    404 = Artifact not found
+    5xx = Server/upstream problem
 
-In `settings.xml`: add a **mirror** pointing to the Nexus group URL, and add your login under `<servers>`. In `pom.xml`: add `<distributionManagement>` for deploying. The server IDs must match.
+### Interview answer:
 
-**57. How do you push a Docker image to Nexus?**
-
-`docker login <nexus-host:port>`, then `docker tag myapp <nexus-host:port>/myapp:1.0`, then `docker push <nexus-host:port>/myapp:1.0`.
-
-**58. How do you pull a Docker image from Nexus?**
-
-`docker pull <nexus-host:port>/myapp:1.0`.
-
-**59. How do you configure a cleanup policy?**
-
-Go to **Repository → Cleanup Policies**, create a policy (for example, "not downloaded in 60 days"), and **assign it to a repository**. Then run **Compact blob store** to free the disk space.
-
-**60. How do you set up a proxy repository for Maven Central?**
-
-Create a **maven2 (proxy)** repository, set the remote URL to `https://repo1.maven.org/maven2/`, choose the **Release** version policy, and keep the default cache settings. Add it to your `maven-public` group.
-
----
-
-### Detailed Questions and Answers
-
-**61. How do you use a custom port?**
-
-Edit `nexus.properties` in the data folder's `etc` directory (`sonatype-work/nexus3/etc/` or `nexus-data/etc/`), change `application-port=8081` to your port, and **restart** Nexus.
-
-**62. How do you create a Docker group repository?**
-
-**Repositories → Create repository → docker (group)**, give it its own HTTP/HTTPS port, add the Docker hosted and proxy repositories as members, and save. Enable the **Docker Bearer Token realm**.
-
-**63. How do you set up PyPI?**
-
-Create **PyPI hosted** (internal packages), **PyPI proxy** (to pypi.org), and a **PyPI group**. Install with `pip install <pkg> --index-url <nexus-group-url>/simple`, and upload with `twine`.
-
-**64. How do you handle large uploads?**
-
-⚠️ **Update:** There isn't usually a "max upload size" setting in Nexus itself. Problems normally come from the **reverse proxy** (for example, Nginx `client_max_body_size`), **timeouts**, low **disk space**, or low **memory**. Check those first.
-
-**65. What is the role of `nexus-context.xml`?**
-
-⚠️ **Update:** That file belonged to **Nexus 2**. In Nexus 3, the main settings are in `nexus.properties`, `nexus.vmoptions`, and the Jetty config files under `etc/`. Most configuration is done in the web UI and stored in the database.
-
-**66. How do you configure email notifications?**
-
-Go to **Administration → System → Email Server**, enter the SMTP details, and test. Email is used for things like **password reset** and **task failure alerts**. (Pro features can use it for more.)
-
-**67. What is the Nexus Audit Plugin?**
-
-⚠️ **Update:** In Nexus 3 it is a **built-in Audit capability**, not a separate plugin. It records who did what and when (logins, changes, uploads, deletions). Turn it on in the capabilities settings.
-
-**68. How do you configure repository health checks?**
-
-⚠️ **Update:** The old **Repository Health Check (RHC)** feature depends on the version and edition. A safe answer: "I monitor repository health with the **status page, proxy repository status, metrics, and logs**, plus security scanning with Nexus IQ."
-
-**69. How do you manage SSL certificates?**
-
-Two ways: put a **reverse proxy** (Nginx/Apache) in front and install the certificate there, or put the certificate in a **Java keystore** and enable HTTPS in Nexus. Set a reminder to **renew before expiry**.
-
-**70. How do you set up Nexus for multiple organizations?**
-
-Create **separate repositories per organization**, use **roles and content selectors** so each group sees only its own content, and use separate blob stores if you need to track storage. For strict isolation, use separate Nexus instances.
+> "I would first verify the dependency coordinates and Maven settings.xml. Then I would check whether the artifact exists in Nexus and whether the user has Read permission. If it is a proxy repository, I would verify the upstream URL, network connectivity, cache, and SSL configuration. Finally, I would check Nexus and Maven logs to identify the exact root cause."
 
 ---
 
-### In-depth Questions
+## 2. NEXUS IS RUNNING OUT OF DISK SPACE
 
-**71. What performance tuning options exist?**
+**Q: Nexus disk usage has reached 95% and builds are failing. What would you do?**
 
-⚠️ **Update:** Skip "index optimization" (old). Say: increase **JVM heap** and direct memory, use **SSD disks**, raise the **file descriptor limit**, run **cleanup and compact** tasks, split blob stores, and run heavy tasks off-peak.
+### Answer:
 
-**72. How do you set up disaster recovery?**
+I would not manually delete files from the Nexus filesystem.
 
-Take **regular backups** (database and blob stores), store a copy **off-site**, keep a **documented and tested restore plan**, and optionally have a standby site. Remember: **HA is not DR**.
+1. Identify which Blob Store is consuming the most space.
 
-**73. How do you migrate artifacts to another Nexus?**
+### Example:
 
-⚠️ **Update:** There is no simple "export repositories" button. Common ways: **restore the database and blob store backup** on the new server (same version), **copy artifacts using the REST API or scripts**, or use Sonatype's **migration tools** for Nexus 2 → 3. Verify with checksums afterward.
+    maven-releases  -> 20 GB
+    maven-snapshots -> 500 GB
+    docker          -> 200 GB
 
-**74. How do you integrate other CI tools?**
+2. Check which repositories contain old or unnecessary artifacts.
 
-Use the **REST API**, or build-tool commands inside the pipeline (`mvn deploy`, `npm publish`, `docker push`). This works with **GitLab CI, GitHub Actions, Azure DevOps, Bamboo, CircleCI**, and others.
+3. Check cleanup policies.
 
-**75. How do you configure Nexus for GDPR?**
+For example:
 
-GDPR is about **personal data**. In Nexus that means user accounts, emails, and IP addresses in logs. Use **access control**, **log retention limits**, remove users when they leave, and keep **audit logs**. Check the exact rules with your compliance team.
+    - Delete old SNAPSHOTs.
+    - Delete unused/old components based on retention requirements.
 
-**76. Benefits of Nexus over other repository managers?**
+4. Be careful with release artifacts because production applications may depend on them.
 
-Free edition available, **many formats in one tool**, strong integration with **Sonatype security scanning**, and wide CI/CD support. Be fair: alternatives like **JFrog Artifactory** are also strong, and the best choice depends on needs and budget.
+5. Run the appropriate cleanup process.
 
-**77. How do you handle artifact versioning?**
+6. Monitor storage after cleanup.
 
-Use **semantic versioning** (`MAJOR.MINOR.PATCH`), keep **snapshots and releases in separate repositories**, and make **releases immutable** (no redeploy).
+7. If storage is still insufficient, plan additional storage capacity.
 
-**78. What is the impact of cleanup policies on build performance?**
+### Important:
 
-They keep repositories small, which saves **disk space, backup time, and search load**. Be careful: deleting something a project still needs will **break builds**, so never clean up releases still in use.
+Do not simply delete files directly from the Blob Store because Nexus maintains metadata and storage relationships.
 
-**79. How do you configure an external database?**
+### Interview answer:
 
-⚠️ **Update:** Older Nexus used embedded **OrientDB**. **Newer versions** use **H2** by default and support **PostgreSQL** (needed for HA). Check the docs for your version before answering.
-
-**80. How do you monitor usage and activity?**
-
-Use the **status page**, **logs**, **audit log**, and a **metrics endpoint** (Prometheus/Grafana), plus alerts for disk, memory, and response time.
-
----
-
-### Advanced Configuration
-
-**81. What is the purpose of Nexus Firewall?**
-
-It checks components coming from proxy repositories and **blocks or quarantines** the ones with known vulnerabilities or bad licenses, **before** they enter your network. (Separate licensed Sonatype product.)
-
-**82. How do you configure Nexus behind a proxy server?**
-
-Go to **Administration → System → HTTP**, enter the outbound proxy host, port, and login. Nexus then uses it to reach remote repositories like Maven Central.
-
-**83. What are Blob Stores and how do you manage them?**
-
-They hold the **actual artifact files**. Create them under **Repository → Blob Stores**, use several for different workloads, set **soft quota alerts**, **compact** regularly, and **back them up**.
-
-**84. How do you configure SSO?**
-
-⚠️ **Update:** **LDAP is central login, not true SSO.** True SSO uses **SAML (Pro)**, or a reverse proxy passing a trusted user header (the Remote User Token realm). Check which your version supports.
-
-**85. Best practices for large-scale deployments?**
-
-**HA** (Pro), external PostgreSQL, shared or cloud blob stores, **cleanup policies**, monitoring and alerts, tested backups, **infrastructure-as-code**, and regular upgrades.
-
-**86. How do you support many languages and build tools?**
-
-Create a repository set (hosted, proxy, group) **per format** (Maven, npm, PyPI, Docker), point each build tool at its group URL, and give each team the right roles.
-
-**87. How do you handle promotion in a multi-stage pipeline?**
-
-Publish to a **staging/dev repository**, run tests and scans, and **promote the same artifact** to the next repository on success (REST API, scripts, or Pro staging). Never rebuild.
-
-**88. How do you set up automated cleanup?**
-
-Create **cleanup policies**, assign them to repositories, make sure the **cleanup task** is scheduled, and also schedule **Compact blob store** so space is really freed.
-
-**89. How do you integrate Nexus with version control?**
-
-⚠️ **Update:** Nexus doesn't connect to Git directly. The link goes through **CI**: a Git commit triggers a pipeline, which builds and **pushes the artifact to Nexus**. Include the commit ID in the build info.
-
-**90. How do you support distributed teams?**
-
-Use **regional Nexus instances** (proxying the main one, or Pro replication), **RBAC** for each team, and cloud storage for blob stores. (HA clustering is for failover, not for geography.)
+> "I would first identify the Blob Store consuming the most space. Then I would review snapshots and old artifacts and use cleanup policies rather than manually deleting files. I would protect production release artifacts, run cleanup, monitor the storage, and increase capacity if required."
 
 ---
 
-### Troubleshooting and Maintenance
+## 3. NEXUS PROXY CANNOT DOWNLOAD FROM MAVEN CENTRAL
 
-**91. How do you fix repository synchronization issues?**
+**Q: A Nexus proxy repository cannot download packages from Maven Central. How would you troubleshoot it?**
 
-For proxy repositories: check the **remote URL**, network and firewall, whether the repository is **auto-blocked**, then **invalidate the cache** and rebuild metadata if needed. Check the logs.
+### Answer:
 
-**92. What if Nexus has high CPU usage?**
+I would follow the complete communication path:
 
-Check which **scheduled task** is running (cleanup, compact, rebuild), look for **garbage collection** or memory pressure, review heavy requests in logs, and then tune the heap, clean up, or add CPU.
+    Nexus
+      |
+      v
+    Proxy Repository
+      |
+      v
+    Remote URL
+      |
+      v
+    Network / Corporate Proxy
+      |
+      v
+    Maven Central
 
-**93. How do you handle failed uploads?**
+I would check:
 
-Check these, in order: **permission** (deploy privilege), **write policy** (releases usually block redeploy), **version policy mismatch** (snapshot sent to a release repository), **credentials/server ID**, **disk space**, and **proxy limits or timeouts**. Then read the logs.
+1. Remote URL:
+   - Is the upstream URL correct?
 
-**94. How do you upgrade Nexus?**
+2. Network connectivity:
+   - Can the Nexus server reach the internet?
+   - Check firewall rules.
+   - Check DNS.
+   - Check routing.
 
-**Back up first**. Stop Nexus, install the new version, and point it at the **same data directory**. Start and test. For big version jumps, follow the official upgrade path, as the database may need migration.
+3. Corporate proxy:
+   - Does Nexus need to use an enterprise HTTP/HTTPS proxy?
+   - Are proxy settings correct?
 
-**95. How do you troubleshoot startup issues?**
+4. Authentication:
+   - Does the upstream repository require credentials?
 
-Read `nexus.log`, check the **Java version**, **file permissions** and the user running Nexus, **disk space**, and whether the **port is already in use**.
+5. SSL/TLS:
+   - Check certificates.
+   - Check trust configuration.
+   - Look for errors such as:
+     - "PKIX path building failed"
+     - "SSL handshake failed"
 
-**96. How do you monitor and manage performance?**
+6. Repository health/status.
 
-Track **CPU, heap, disk, and response times** using the status page, metrics, and logs. Schedule maintenance tasks and alert on trends.
+7. Nexus logs.
 
-**97. How do you handle large-scale storage?**
+### Interview answer:
 
-Use **multiple blob stores** (or cloud storage like S3), set **quotas and alerts**, apply **cleanup policies**, compact regularly, and plan disk growth.
+> "For a proxy failure, I would first verify the remote URL and then check network connectivity, DNS, firewall, and corporate proxy configuration. I would also verify upstream authentication and SSL certificates. Finally, I would inspect Nexus logs to determine whether the issue is network, authentication, SSL, or upstream related."
 
-**98. How do you ensure high availability?**
+---
 
-Use **HA nodes with a load balancer**, PostgreSQL, and a shared blob store (Pro), plus **health checks** and tested failover. Keep backups too, since **HA is not a backup**.
+## 4. USER CAN DOWNLOAD BUT CANNOT UPLOAD
 
-**99. Best practices for securing repositories?**
+**Q: A developer can download artifacts from Nexus but cannot upload them. What could be wrong?**
 
-Change default passwords, use **HTTPS**, **least-privilege RBAC**, disable anonymous access if not needed, use LDAP/SSO, run Nexus as a **non-root user**, keep it **updated**, scan components, and watch the **audit logs**.
+### Answer:
 
-**100. How do you manage multiple Nexus instances?**
+This is usually a permissions issue.
 
-⚠️ **Update:** Nexus has no single central console. Use **infrastructure-as-code** (Terraform/Ansible with the REST API) for **identical configuration**, shared standards, replication or proxying between instances, and common **monitoring and backup** processes.
+Downloading and uploading require different privileges.
+
+### Typical privileges:
+
+    Browse -> See/search artifacts
+    Read   -> Download artifacts
+    Add    -> Upload artifacts
+    Edit   -> Modify artifacts
+    Delete -> Remove artifacts
+
+The user may have:
+
+    Browse + Read
+
+but not:
+
+    Add
+
+I would check:
+
+    User
+      |
+      v
+    Role
+      |
+      v
+    Privileges
+      |
+      v
+    Repository
+
+I would also check whether a Content Selector is restricting the user.
+
+### For example:
+
+    Developer
+       |
+       +-- Read
+       +-- Browse
+       +-- No Add
+
+Therefore:
+
+    Download -> SUCCESS
+    Upload   -> FAILURE
+
+### Interview answer:
+
+> "I would check the user's roles and privileges. Read permission allows downloading, while Add permission is required for uploading. I would verify that the user has Add access to the target hosted repository and that no content selector is blocking the upload."
+
+---
+
+## 5. TWO TEAMS NEED DIFFERENT ARTIFACT ACCESS
+
+**Q: Team A and Team B use the same repository, but Team A should only access project-a and Team B should only access project-b. How would you implement this?**
+
+### Answer:
+
+I would use:
+
+    Roles + Privileges + Content Selectors
+
+### Example:
+
+Repository:
+
+    company-repository
+
+Artifacts:
+
+    project-a/*
+    project-b/*
+    project-c/*
+
+Create a content selector for Team A:
+
+    project-a/*
+
+Create another content selector for Team B:
+
+    project-b/*
+
+Then assign privileges through roles:
+
+    Team A Role
+       |
+       +-- Read project-a/*
+
+    Team B Role
+       |
+       +-- Read project-b/*
+
+This provides fine-grained access control.
+
+I would follow the principle of least privilege.
+
+That means:
+
+    Team A should NOT get access to everything.
+    Team B should NOT get access to everything.
+
+### Interview answer:
+
+> "I would use content-selector-based privileges with roles. Team A would receive access only to project-a paths, while Team B would receive access only to project-b paths. This gives fine-grained access and follows the principle of least privilege."
+
+---
+
+## 6. CI/CD PIPELINE BUILDS SUCCESSFULLY BUT CANNOT UPLOAD TO NEXUS
+
+**Q: Jenkins/GitLab CI successfully builds the application but fails while uploading the artifact to Nexus. How would you troubleshoot it?**
+
+### Answer:
+
+The pipeline is:
+
+    Git
+      |
+      v
+    Build
+      |
+      v
+    Test
+      |
+      v
+    Upload to Nexus  <-- FAILURE
+
+I would check the following:
+
+1. Nexus URL:
+   - Is the CI/CD pipeline using the correct repository URL?
+
+2. Credentials:
+   - Are the Nexus username/token credentials correct?
+   - Have they expired?
+
+3. Permissions:
+   - Does the CI service account have Add permission?
+
+4. Repository type:
+   - Is the target repository a hosted repository?
+   - Is the pipeline accidentally trying to upload to a proxy/group repository?
+
+5. Version:
+   - Is the artifact a RELEASE or SNAPSHOT?
+
+### Example:
+
+    1.2.0-SNAPSHOT
+        |
+        v
+    Snapshot Repository
+
+A release artifact should normally go to the release repository.
+
+6. Deployment policy:
+   - Is redeployment allowed?
+   - Does the artifact already exist?
+
+### Example:
+
+    myapp-1.0.0.jar already exists
+                |
+                v
+           Redeploy blocked
+
+7. Check Nexus and CI/CD logs.
+
+### Interview answer:
+
+> "I would first check the Nexus URL and CI credentials. Then I would verify that the service account has Add permission on the target hosted repository. I would check whether the artifact is a release or snapshot and whether the repository's deployment policy allows the upload or redeployment. Finally, I would check the CI and Nexus logs."
+
+---
+
+## 7. DOCKER PUSH WORKS BUT DOCKER PULL FAILS
+
+**Q: A Docker image can be pushed to Nexus but cannot be pulled. What would you check?**
+
+### Answer:
+
+Since push works, authentication and connectivity are probably partially working.
+
+I would check:
+
+1. Read permission:
+   - Push requires write/add access.
+   - Pull requires read access.
+
+2. Docker login:
+   - Is the user authenticated to the correct Nexus Docker registry?
+
+3. Image name:
+
+### Example:
+
+    nexus.company.com/myapp:1.0
+
+Make sure the repository path and image name are correct.
+
+4. Does the image actually exist in Nexus?
+
+5. Docker repository configuration:
+   - Check Docker connector/port.
+   - Check HTTPS configuration.
+
+6. SSL/TLS certificate:
+   - Docker may reject an invalid or untrusted certificate.
+
+7. Check Nexus logs.
+
+### Important idea:
+
+    Push -> Write/Add
+    Pull -> Read
+
+### Interview answer:
+
+> "Since the push is successful, I would first verify Read permission for the user or service account. Then I would check the image name, tag, repository path, Docker login, connector configuration, and SSL/TLS setup. I would also confirm that the image exists in the expected Docker repository."
+
+---
+
+## 8. BUILD WORKS ON ONE MACHINE BUT FAILS ON ANOTHER
+
+**Q: Maven build works on Developer A's machine but fails on Developer B's machine. How would you troubleshoot it?**
+
+### Answer:
+
+I would compare both environments.
+
+Check:
+
+1. Java version:
+
+### Example:
+
+    Developer A -> Java 17
+    Developer B -> Java 11
+
+2. Maven version.
+
+3. Maven settings.xml:
+   - Same Nexus URL?
+   - Same mirror?
+   - Same repository?
+   - Correct credentials?
+
+4. User permissions:
+   - Does Developer B have access to Nexus?
+
+5. Local Maven cache:
+
+    Developer A:
+       ~/.m2/repository
+           |
+           +-- Dependency already cached
+
+    Developer B:
+       Dependency not cached
+           |
+           v
+       Needs Nexus access
+
+6. Network:
+   - VPN?
+   - Firewall?
+   - Corporate proxy?
+   - DNS?
+
+7. Compare the exact error messages.
+
+### Important point:
+
+Sometimes Developer A appears to work because the dependency is already available in the local Maven cache, while Developer B actually needs to download it from Nexus.
+
+### Interview answer:
+
+> "I would compare Java and Maven versions, settings.xml, Nexus credentials, permissions, local Maven cache, and network configuration between the two machines. A common reason is that the working machine already has the dependency cached locally, while the failing machine needs to retrieve it from Nexus."
+
+---
+
+## 9. A RELEASE ARTIFACT WAS ACCIDENTALLY OVERWRITTEN
+
+**Q: Someone accidentally overwrote a released artifact. How would you prevent this?**
+
+### Answer:
+
+Released artifacts should normally be immutable.
+
+### Example:
+
+    myapp-2.0.0.jar
+          |
+          v
+        RELEASE
+          |
+          v
+    Should NOT be overwritten
+
+Configure the release repository so that redeployment of an existing version is not allowed.
+
+Instead of replacing:
+
+    myapp-2.0.0
+
+publish a new version:
+
+    myapp-2.0.1
+
+This gives:
+
+    Reproducibility
+    Traceability
+    Reliable deployments
+    Safer rollback
+
+### Best practice:
+
+    Build
+      |
+      v
+    Test
+      |
+      v
+    Release
+      |
+      v
+    Immutable Artifact
+      |
+      v
+    Deploy
+
+### Important interview phrase:
+
+"Build once and promote the same artifact."
+
+Do not rebuild a different binary for every environment.
+
+### Interview answer:
+
+> "I would configure the release repository to prevent redeployment of an existing version and enforce immutable release artifacts. If a change is required, we should publish a new version instead of overwriting the existing artifact."
+
+---
+
+## 10. CI/CD BUILDS HAVE SUDDENLY BECOME VERY SLOW
+
+**Q: Yesterday a build took 5 minutes, but today it takes 30 minutes. Nexus is involved. How would you troubleshoot it?**
+
+### Answer:
+
+I would first identify WHERE the time is being spent.
+
+The flow is:
+
+    CI/CD
+       |
+       v
+    Nexus
+       |
+       v
+    Proxy
+       |
+       v
+    Upstream Repository
+
+### Possible causes:
+
+1. Nexus cache miss:
+
+    CI
+     |
+     v
+    Nexus
+     |
+     v
+    Cache miss
+     |
+     v
+    Internet
+     |
+     v
+    Upstream Repository
+
+The package has to be downloaded again.
+
+2. Upstream repository is slow.
+
+    Nexus ---> Maven Central
+                   |
+                   v
+                 Slow
+
+3. Network problem:
+   - High latency
+   - DNS problem
+   - Firewall
+   - Corporate proxy
+   - Packet loss
+
+4. Nexus performance:
+   - High CPU
+   - High memory usage
+   - High disk I/O
+   - Too many concurrent requests
+
+5. Blob Store performance:
+   - Slow storage
+   - Storage capacity problems
+   - I/O bottleneck
+
+6. CI runner problem:
+   - Jenkins/GitLab runner overloaded
+   - Network issue
+   - Container/resource problem
+
+7. Check Nexus logs and CI logs.
+
+I would compare:
+
+    Previous build:
+       5 minutes
+
+    Current build:
+       30 minutes
+
+Then identify which stage became slower.
+
+### Interview answer:
+
+> "I would first identify whether the slowdown is between the CI runner and Nexus, between Nexus and the upstream repository, or inside the build itself. I would check cache hits, upstream response time, network latency, Nexus CPU and memory, disk I/O, Blob Store performance, and Nexus logs. I would also check whether the CI runner itself is overloaded."
+
+---
+
+## BONUS: GENERAL NEXUS TROUBLESHOOTING FORMULA
+
+For almost any Nexus problem, follow this order:
+
+    1. CLIENT
+       |
+       | Is Maven/npm/Docker configured correctly?
+       v
+    2. URL
+       |
+       | Is the correct Nexus repository being used?
+       v
+    3. AUTHENTICATION
+       |
+       | Is the user/token valid?
+       v
+    4. AUTHORIZATION
+       |
+       | Does the user have the required privileges?
+       v
+    5. REPOSITORY
+       |
+       | Hosted / Proxy / Group?
+       | Correct policy?
+       v
+    6. NETWORK
+       |
+       | DNS / Firewall / Proxy / Connectivity?
+       v
+    7. UPSTREAM
+       |
+       | Is the external repository available?
+       v
+    8. STORAGE
+       |
+       | Blob Store / Disk / I/O?
+       v
+    9. LOGS
+       |
+       | What exact error is Nexus reporting?
+       v
+    10. ROOT CAUSE
+        |
+        +--> Fix
+        +--> Test
+        +--> Monitor
+
+---
+
+## IMPORTANT HTTP STATUS CODES TO REMEMBER
+
+    401 -> Authentication failed
+    403 -> User authenticated but does not have permission
+    404 -> Artifact/resource not found
+    408 -> Request timeout
+    429 -> Too many requests/rate limiting
+    500 -> Internal server error
+    502 -> Bad gateway/upstream problem
+    503 -> Service unavailable
+    504 -> Gateway timeout
+
+---
+
+## IMPORTANT NEXUS CONCEPTS TO MENTION IN INTERVIEWS
+
+### Hosted Repository
+
+    -> Stores your organization's artifacts.
+
+### Proxy Repository
+
+    -> Downloads and caches artifacts from an external repository.
+
+### Group Repository
+
+    -> Combines multiple repositories behind one URL.
+
+### Blob Store
+
+    -> Stores the actual artifact files.
+
+### Cleanup Policy
+
+    -> Removes old/unwanted artifacts according to defined rules.
+
+### Roles
+
+    -> Group permissions for users.
+
+### Privileges
+
+    -> Define what actions users can perform.
+
+### Content Selectors
+
+    -> Provide fine-grained access to specific artifact paths.
+
+### Repository Policy
+
+    -> Controls release/snapshot behavior.
+
+### Deployment Policy
+
+    -> Controls whether artifacts can be redeployed/overwritten.
+
+### Proxy Cache
+
+    -> Stores downloaded external artifacts locally.
+
+### Immutable Artifact
+
+    -> Released artifact should not be changed after publication.
+
+### CI/CD Integration
+
+    -> Build -> Nexus -> Deploy.
+
+### Artifact Promotion
+
+    -> Move the same tested artifact through environments.
+
+### Logs
+
+    -> Help identify the root cause of Nexus problems.
+
+## 11. NEXUS SERVER IS COMPLETELY DOWN IN PRODUCTION
+
+**Q: Developers and CI/CD pipelines cannot access Nexus at all. The Nexus UI is also not opening. What would you do?**
+
+### Answer:
+
+I would treat this as a production incident and first determine whether the problem is with Nexus itself, the server, the network, or the load balancer.
+
+### Step 1: Check availability
+
+    Client
+      |
+      v
+    Load Balancer
+      |
+      v
+    Nexus Server
+
+Check:
+
+- Can the Nexus URL be resolved?
+- Is DNS working?
+- Can the server be reached?
+- Is the Nexus service running?
+
+### Step 2: Check the Nexus process/service.
+
+If the service is stopped, check why it stopped.
+
+### Step 3: Check server resources:
+
+    CPU
+    Memory
+    Disk
+    Disk I/O
+
+A full disk or exhausted memory can cause Nexus problems.
+
+### Step 4: Check Nexus logs.
+
+Look for:
+
+- OutOfMemoryError
+- Disk full
+- Database/configuration errors
+- Blob Store errors
+- Startup failures
+
+### Step 5: Check reverse proxy/load balancer.
+
+Sometimes Nexus is healthy but the load balancer or reverse proxy is failing.
+
+### Step 6: If there was a recent change, investigate it.
+
+For example:
+
+- Certificate change
+- Network change
+- Firewall change
+- Nexus configuration change
+- OS patching
+
+### Step 7: If recovery is not possible, follow the disaster recovery procedure.
+
+### Interview answer:
+
+> "I would first determine whether the failure is at the DNS, load balancer, server, or Nexus application layer. I would check the Nexus service, CPU, memory, disk, disk I/O, and logs. I would also verify the load balancer and network path. If the issue cannot be recovered quickly, I would follow the documented backup and disaster recovery procedure."
+
+---
+
+## 12. NEXUS IS RUNNING BUT USERS ARE GETTING 503 ERRORS
+
+**Q: Nexus is running, but users are receiving HTTP 503 Service Unavailable. What would you check?**
+
+### Answer:
+
+503 generally means the service is temporarily unavailable.
+
+I would check the complete request path:
+
+    User
+      |
+      v
+    Load Balancer
+      |
+      v
+    Reverse Proxy
+      |
+      v
+    Nexus
+      |
+      v
+    Storage
+
+First check whether Nexus itself is healthy.
+
+Then check:
+
+1. Load balancer health checks.
+2. Reverse proxy configuration.
+3. Nexus application health.
+4. CPU and memory.
+5. Disk availability.
+6. Blob Store availability.
+7. Nexus logs.
+8. Recent infrastructure changes.
+
+If Nexus is healthy but the load balancer reports it as unhealthy, the problem may be outside Nexus.
+
+### Interview answer:
+
+> "I would not assume that 503 means Nexus itself is down. I would check the load balancer and reverse proxy first, then verify the Nexus application health, system resources, storage, and logs. This helps identify which layer is actually returning the 503."
+
+---
+
+## 13. NEXUS DISK IS 100% FULL
+
+**Q: Production Nexus has reached 100% disk usage. What would you do immediately?**
+
+### Answer:
+
+This is a critical production issue.
+
+First:
+
+    STOP making unnecessary changes.
+
+Then identify:
+
+    Which filesystem is full?
+    Which Blob Store is consuming space?
+    Is the Nexus process still healthy?
+
+Check:
+
+    df -h
+    df -i
+
+Also check inode usage because a filesystem can run out of inodes even when there appears to be free disk space.
+
+Then identify what is consuming space.
+
+### Possible causes:
+
+- Old snapshots
+- Docker images
+- Large artifacts
+- Logs
+- Temporary files
+- Backup files
+
+Do NOT manually delete Nexus Blob Store files.
+
+Use the appropriate Nexus cleanup process.
+
+If production is severely impacted, increase storage capacity according to the organization's emergency procedure.
+
+After recovering space:
+
+1. Verify Nexus health.
+2. Test artifact download.
+3. Test artifact upload.
+4. Review cleanup policies.
+5. Set storage alerts.
+
+### Interview answer:
+
+> "I would first identify the filesystem and whether the problem is disk or inode exhaustion. I would determine what is consuming the space and avoid manually deleting Blob Store files. If necessary, I would increase storage capacity, then use appropriate cleanup policies and verify Nexus functionality. Finally, I would add monitoring and alerting to prevent recurrence."
+
+---
+
+## 14. USERS SUDDENLY GET 401 ERRORS AFTER A CERTIFICATE CHANGE
+
+**Q: After a certificate or authentication change, users suddenly cannot log in to Nexus and receive 401 errors. What would you check?**
+
+### Answer:
+
+401 means authentication is failing.
+
+I would check:
+
+1. Was there a recent certificate/authentication change?
+
+2. If LDAP/AD is being used:
+   - Is LDAP reachable?
+   - Are bind credentials valid?
+   - Is the LDAP certificate trusted?
+   - Is the LDAP connection working?
+
+3. If SSO is used:
+   - Is the identity provider available?
+   - Is the certificate valid?
+   - Are client/issuer settings correct?
+
+4. Check Nexus security logs.
+
+5. Test with a known valid account.
+
+6. Verify that the issue affects:
+   - All users
+   - One user
+   - CI/CD accounts
+   - Docker users
+   - Maven users
+
+This helps determine whether the issue is global or user-specific.
+
+### Interview answer:
+
+> "Since the error is 401, I would focus on authentication rather than repository permissions. I would check the recent certificate or identity-provider change, LDAP/SSO connectivity, trust configuration, credentials, and Nexus security logs. I would also test with a known working account to determine the scope."
+
+---
+
+## 15. NEXUS USERS ARE GETTING 403 ERRORS
+
+**Q: Users can log in successfully, but they receive 403 Forbidden when trying to download or upload artifacts. What does this mean?**
+
+### Answer:
+
+401 and 403 are different.
+
+**401:**
+
+    Authentication problem.
+
+**403:**
+
+    User is authenticated but does not have permission.
+
+So I would investigate authorization.
+
+Check:
+
+    User
+      |
+      v
+    Role
+      |
+      v
+    Privileges
+      |
+      v
+    Repository
+
+For download:
+
+    Browse + Read
+
+For upload:
+
+    Add
+
+For modification:
+
+    Edit
+
+For deletion:
+
+    Delete
+
+Also check Content Selectors.
+
+### Example:
+
+    User has Read permission
+             |
+             v
+    Content Selector allows:
+        project-a/*
+             |
+             v
+    User requests:
+        project-b/*
+             |
+             v
+          403
+
+### Interview answer:
+
+> "A 403 tells me that authentication is probably successful but authorization is failing. I would check the user's roles, privileges, repository permissions, and content selectors. I would verify that the required privilege exists for the specific operation."
+
+---
+
+## 16. A NEXUS PROXY REPOSITORY IS EXTREMELY SLOW
+
+**Q: Developers complain that dependencies take several minutes to download through a Nexus proxy. How would you troubleshoot?**
+
+### Answer:
+
+I would identify whether the delay is:
+
+    Developer -> Nexus
+
+    OR
+
+    Nexus -> Upstream
+
+Check:
+
+1. Nexus response time.
+
+2. Cache status.
+
+If the artifact is already cached:
+
+    Developer
+      |
+      v
+    Nexus Cache
+      |
+      v
+    Fast response
+
+If it is not cached:
+
+    Developer
+      |
+      v
+    Nexus
+      |
+      v
+    Internet
+      |
+      v
+    Upstream
+      |
+      v
+    Slow response
+
+3. Check upstream repository latency.
+
+4. Check corporate proxy.
+
+5. Check DNS.
+
+6. Check network latency.
+
+7. Check CPU, memory, and disk I/O.
+
+8. Check Blob Store performance.
+
+9. Check Nexus logs.
+
+### Interview answer:
+
+> "I would determine whether the delay is between the client and Nexus or between Nexus and the upstream repository. I would check cache hits, upstream latency, corporate proxy, DNS, network, system resources, Blob Store performance, and Nexus logs."
+
+---
+
+## 17. CI/CD PIPELINES FAIL BECAUSE NEXUS IS UNAVAILABLE
+
+**Q: Your Jenkins pipelines depend on Nexus. Nexus goes down and hundreds of production builds fail. How would you handle this?**
+
+### Answer:
+
+First, I would treat Nexus as a critical dependency.
+
+### Immediate response:
+
+1. Confirm Nexus availability.
+2. Identify the scope of impact.
+3. Check whether existing artifacts are still available.
+4. Start Nexus recovery.
+5. Communicate the production impact.
+
+Then investigate the root cause.
+
+### Important consideration:
+
+If dependencies are already cached locally on CI runners, some builds may still work.
+
+But new dependencies may fail.
+
+After Nexus is restored:
+
+1. Test authentication.
+2. Test artifact download.
+3. Test artifact upload.
+4. Run a controlled pipeline.
+5. Monitor Nexus.
+
+### Long-term improvement:
+
+- Proper backup
+- Monitoring
+- Alerting
+- Disaster recovery
+- Highly available architecture where appropriate
+- Documented incident procedure
+
+### Interview answer:
+
+> "I would first confirm the outage and identify the affected pipelines. I would recover Nexus according to the production runbook, then validate download and upload operations before resuming large-scale builds. After recovery, I would perform a root-cause analysis and improve monitoring, backup, and disaster recovery."
+
+---
+
+## 18. A SNAPSHOT REPOSITORY HAS GROWN TO HUNDREDS OF GB
+
+**Q: Your Maven snapshot repository has grown massively and is consuming most of the storage. What would you do?**
+
+### Answer:
+
+SNAPSHOT repositories can grow quickly because CI pipelines may produce many versions.
+
+### Example:
+
+    1.0-SNAPSHOT
+    1.0-SNAPSHOT
+    1.0-SNAPSHOT
+    ...
+    thousands of builds
+
+I would:
+
+1. Identify how much storage snapshots consume.
+
+2. Determine the organization's retention requirement.
+
+3. Create a cleanup policy.
+
+### Example:
+
+    Delete snapshots older than 30 days.
+
+Or based on:
+
+- Age
+- Number of versions
+- Usage/retention requirements
+
+4. Run cleanup.
+
+5. Monitor storage.
+
+6. Prevent the problem from returning by implementing appropriate retention policies and alerts.
+
+### Important:
+
+Do not blindly delete snapshots that are still required by active development or release processes.
+
+### Interview answer:
+
+> "Snapshot repositories are expected to grow quickly. I would first determine the retention requirement, then configure a cleanup policy based on age or retention rules. I would run the cleanup process, monitor storage, and configure alerts so the repository does not reach a critical capacity."
+
+---
+
+## 19. A PACKAGE EXISTS IN NEXUS BUT MAVEN STILL GETS 404
+
+**Q: You can see the artifact in the Nexus UI, but Maven gets a 404 Not Found. What would you check?**
+
+### Answer:
+
+This is a very common production troubleshooting scenario.
+
+First verify that the artifact exists in the SAME repository that Maven is accessing.
+
+### Example:
+
+Nexus UI:
+
+    Artifact exists in:
+        maven-releases
+
+Maven:
+
+    Requesting:
+        maven-snapshots
+
+This can cause a 404.
+
+Check:
+
+1. Repository URL in settings.xml.
+
+2. Group repository membership.
+
+3. Repository order.
+
+4. Artifact coordinates:
+
+    Group ID
+    Artifact ID
+    Version
+
+5. Release vs Snapshot.
+
+### Example:
+
+    1.2.0-SNAPSHOT
+        |
+        v
+    Snapshot Repository
+
+    1.2.0
+        |
+        v
+    Release Repository
+
+6. Content selector permissions.
+
+7. Repository routing rules if a proxy is involved.
+
+8. Nexus logs.
+
+### Interview answer:
+
+> "I would first confirm that Maven is requesting the same repository where the artifact exists. Then I would verify the repository URL, group membership and order, artifact coordinates, release versus snapshot configuration, content selectors, and routing rules. Finally, I would check Nexus logs."
+
+---
+
+## 20. NEXUS BACKUP EXISTS, BUT YOU NEED TO RESTORE AFTER A FAILURE
+
+**Q: Your production Nexus server is corrupted and you need to restore it. How would you approach the recovery?**
+
+### Answer:
+
+I would follow the organization's documented disaster recovery procedure rather than improvising.
+
+First identify:
+
+1. What failed?
+2. Is the server recoverable?
+3. Is the Blob Store intact?
+4. Is the configuration intact?
+5. What backup is available?
+
+Important recovery data can include:
+
+- Nexus configuration
+- Repository configuration
+- Security configuration
+- Blob Store/artifact data
+- Supporting infrastructure configuration
+
+### Recovery process conceptually:
+
+    Backup
+      |
+      v
+    Restore infrastructure
+      |
+      v
+    Restore Nexus configuration/data
+      |
+      v
+    Verify Blob Store
+      |
+      v
+    Start Nexus
+      |
+      v
+    Health checks
+      |
+      v
+    Test authentication
+      |
+      v
+    Test artifact download
+      |
+      v
+    Test artifact upload
+      |
+      v
+    Test CI/CD
+      |
+      v
+    Production recovery
+
+After recovery, verify:
+
+- Users can log in.
+- Repositories are available.
+- Artifacts can be downloaded.
+- Artifacts can be uploaded.
+- Proxy repositories can access upstream sources.
+- CI/CD pipelines work.
+- Storage is healthy.
+
+### Interview answer:
+
+> "I would follow the documented disaster recovery procedure. I would first determine what data is intact and which backup is required. I would restore the infrastructure, Nexus configuration, and required artifact storage according to the supported recovery process. After startup, I would validate health, authentication, repositories, artifact download/upload, proxy connectivity, and CI/CD before declaring the service recovered."
+
+---
+
+## IMPORTANT PRODUCTION TROUBLESHOOTING MINDSET
+
+When you get a production Nexus problem, DON'T immediately say:
+
+"Nexus is broken."
+
+Instead, think in layers:
+
+    CLIENT
+      |
+      v
+    NETWORK
+      |
+      v
+    LOAD BALANCER / PROXY
+      |
+      v
+    NEXUS APPLICATION
+      |
+      v
+    REPOSITORY
+      |
+      v
+    SECURITY
+      |
+      v
+    BLOB STORE / STORAGE
+      |
+      v
+    UPSTREAM REPOSITORY
+
+For every incident ask:
+
+1. What exactly is failing?
+2. Who is affected?
+3. When did it start?
+4. What changed recently?
+5. What HTTP error are we getting?
+6. Is Nexus reachable?
+7. Is authentication working?
+8. Is authorization working?
+9. Is the repository configured correctly?
+10. Is storage healthy?
+11. Is the upstream repository reachable?
+12. What do the Nexus logs say?
+
+---
+
+## MOST IMPORTANT HTTP CODES
+
+    401 = Authentication failed
+
+    403 = Authentication succeeded but permission is denied
+
+    404 = Resource/artifact not found
+
+    408 = Request timeout
+
+    429 = Too many requests/rate limiting
+
+    500 = Nexus/server internal error
+
+    502 = Bad gateway / upstream communication problem
+
+    503 = Service unavailable
+
+    504 = Gateway timeout
+
+---
+
+## BEST ONE-LINE INTERVIEW FORMULA
+
+> "First I would identify the scope and exact error, then check client configuration, network connectivity, authentication, authorization, repository configuration, storage/upstream connectivity, and finally Nexus logs. After fixing the issue, I would validate the complete workflow and monitor the system to make sure the problem does not recur."
